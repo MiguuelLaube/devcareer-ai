@@ -1,0 +1,108 @@
+/* Folha do currículo — espelha o modelo "DEV INICIANTE". Medidas fixas = layout estável. */
+.cv-sheet {
+  --cv-accent: #4f2ee8;
+  --cv-ink: #0b0b10;
+  --cv-text: #3a3f4a;
+  --cv-muted: #6b7280;
+  --cv-rule: #e3e5ea;
+  background: #fff;
+  color: var(--cv-text);
+  border-radius: 16px;
+  padding: 48px 48px 40px;
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.65;
+  box-shadow: 0 20px 50px -20px rgb(0 0 0 / 0.45);
+}
+.cv-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #d6d9df;
+}
+.cv-photo {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f1f2f5;
+}
+.cv-photo img { width: 100%; height: 100%; object-fit: cover; }
+/* Sem foto: o espaço some para o cabeçalho ficar idêntico ao modelo */
+.cv-photo--empty { display: none; }
+.cv-header-text { min-width: 0; flex: 1; }
+.cv-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--cv-ink);
+  line-height: 1.2;
+  min-height: 1.2em;
+}
+.cv-headline { font-size: 13.5px; font-weight: 600; color: var(--cv-accent); margin-top: 6px; min-height: 1.4em; }
+.cv-contacts { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: 8px; font-size: 11.5px; color: #4b5160; min-height: 1.6em; }
+.cv-header-link { color: var(--cv-accent); text-decoration: none; font-weight: 500; }
+.cv-header-link:hover { text-decoration: underline; }
+.cv-dot { color: #9aa0ab; }
+
+.cv-section { margin-bottom: 20px; }
+.cv-section:last-child { margin-bottom: 0; }
+.cv-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cv-ink);
+  padding-bottom: 5px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid var(--cv-rule);
+}
+.cv-paragraph { text-align: justify; }
+.cv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-chip {
+  padding: 2px 9px;
+  border-radius: 4px;
+  border: 1px solid #d6d9df;
+  background: #f4f5f7;
+  color: #2a2e37;
+  font-size: 11.5px;
+}
+.cv-entries { display: grid; gap: 12px; }
+.cv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.cv-entry-title { color: var(--cv-ink); font-weight: 700; }
+.cv-link { color: var(--cv-accent); text-decoration: underline; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.cv-entry-desc { margin-top: 2px; }
+.cv-entry-meta { font-size: 11px; color: var(--cv-muted); margin-top: 2px; }
+.cv-edu strong { color: #2a2e37; }
+.cv-muted { color: var(--cv-muted); white-space: nowrap; }
+
+/* Edição inline */
+.cv-editable {
+  outline: none;
+  border-radius: 3px;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cv-editable:hover { background: rgb(79 46 232 / 0.06); }
+.cv-editable:focus { background: rgb(79 46 232 / 0.08); box-shadow: 0 0 0 2px rgb(79 46 232 / 0.35); }
+.cv-editable:empty::before { content: attr(data-placeholder); color: #b5b9c2; }
+.cv-changed { animation: cv-flash 1.6s ease-out; border-radius: 4px; }
+@keyframes cv-flash {
+  0% { background: rgb(250 204 21 / 0.45); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .cv-changed { animation: none; } }
+
+@media print {
+  body * { visibility: hidden; }
+  #resume-document, #resume-document * { visibility: visible; }
+  #resume-document { position: absolute; inset: 0; box-shadow: none; border-radius: 0; padding: 32px 40px; }
+  .cv-editable:hover, .cv-editable:focus { background: none; box-shadow: none; }
+  .cv-editable:empty::before { content: ''; }
+}
