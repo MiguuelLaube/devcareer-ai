@@ -362,8 +362,30 @@ end $$;
 -- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
 create policy "profiles_select_own" on public.profiles for select to authenticated using ((select auth.uid()) = id);
+create policy "profiles_insert_own" on public.profiles for insert to authenticated with check ((select auth.uid()) = id);
 create policy "profiles_update_own" on public.profiles for update to authenticated
   using ((select auth.uid()) = id) with check ((select auth.uid()) = id);
+
+-- Trigger: cria perfil automaticamente quando um usuário se cadastra no Supabase Auth
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, full_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', '')
+  )
+  on conflict (id) do update set
+    full_name = coalesce(nullif(excluded.full_name, ''), public.profiles.full_name);
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 
 do $$
 declare t text;

@@ -420,7 +420,7 @@ export const useAppStore = create<AppState>((set) => ({
           s.id === suggestionId ? { ...s, status: accepted ? ('accepted' as const) : ('rejected' as const) } : s
         );
 
-        let newContent = { ...v.content };
+        const newContent = { ...v.content };
         if (accepted) {
           if (suggestion.section === 'summary') {
             newContent.summary = suggestion.suggestedText;

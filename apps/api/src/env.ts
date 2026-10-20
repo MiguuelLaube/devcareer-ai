@@ -12,9 +12,16 @@ const envSchema = z.object({
 });
 
 // Treat empty strings in .env as "not set"
-const raw = Object.fromEntries(
+const raw: Record<string, any> = Object.fromEntries(
   Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v]),
 );
+
+if (!raw.SUPABASE_ANON_KEY && raw.SUPABASE_PUBLISHABLE_KEY) {
+  raw.SUPABASE_ANON_KEY = raw.SUPABASE_PUBLISHABLE_KEY;
+}
+if (!raw.SUPABASE_SERVICE_ROLE_KEY && raw.SUPABASE_SECRET_KEY) {
+  raw.SUPABASE_SERVICE_ROLE_KEY = raw.SUPABASE_SECRET_KEY;
+}
 
 export const env = envSchema.parse(raw);
 

@@ -4,25 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
-    "start": "node --env-file-if-exists=.env --import tsx src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=apps/api/.env --env-file-if-exists=.env src/index.ts",
+    "start": "node --env-file-if-exists=apps/api/.env --env-file-if-exists=.env --import tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@devcareer/shared": "*",
     "@google/genai": "^1.20.0",
+    "@supabase/server": "^1.9.2",
     "@supabase/supabase-js": "^2.57.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
+    "mammoth": "^1.13.0",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.13.3",
+    "@types/pdf-parse": "^1.1.5",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.4",
     "tsx": "^4.20.0",

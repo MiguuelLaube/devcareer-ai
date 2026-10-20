@@ -35,6 +35,58 @@ export function JobAnalysisPage({ onNavigate }: JobAnalysisPageProps) {
   const [jobUrl, setJobUrl] = React.useState('');
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [savedJobs, setSavedJobs] = React.useState<any[]>([]);
+  const [isLoadingSaved, setIsLoadingSaved] = React.useState(false);
+
+  const fetchSavedJobs = React.useCallback(async () => {
+    try {
+      setIsLoadingSaved(true);
+      const res = await apiRequest<{ success: boolean; jobs: any[] }>('/jobs');
+      if (res.jobs) {
+        setSavedJobs(res.jobs);
+      }
+    } catch {
+      // Ignora erro silenciosamente se não autenticado
+    } finally {
+      setIsLoadingSaved(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchSavedJobs();
+  }, [fetchSavedJobs]);
+
+  const handleSelectSavedJob = async (jobItem: any) => {
+    try {
+      const res = await apiRequest<{ success: boolean; job: any }>(`/jobs/${jobItem.id}`);
+      if (res.job) {
+        const detailAnalysis = res.job.job_analyses?.[0]?.summary || {
+          role: res.job.title,
+          company: res.job.company,
+          seniority: res.job.seniority || 'Júnior',
+          compatibilityScore: res.job.job_analyses?.[0]?.compatibility_score || 0,
+          compatibilityCriteria: res.job.job_analyses?.[0]?.compatibility_breakdown || [],
+          requirements: res.job.job_requirements || [],
+        };
+
+        const reconstructed: Job = {
+          id: res.job.id,
+          userId: res.job.user_id,
+          title: res.job.title || 'Vaga Salva',
+          company: res.job.company || 'Empresa Confidencial',
+          source: res.job.source || 'text',
+          sourceUrl: res.job.source_url || undefined,
+          rawText: res.job.raw_text || '',
+          createdAt: res.job.created_at,
+          analysis: detailAnalysis,
+        };
+
+        setCurrentJob(reconstructed);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao carregar detalhes da vaga salva.');
+    }
+  };
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -75,6 +127,7 @@ export function JobAnalysisPage({ onNavigate }: JobAnalysisPageProps) {
 
       addJob(newJob);
       setCurrentJob(newJob);
+      fetchSavedJobs();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao analisar a vaga');
     } finally {
@@ -136,7 +189,7 @@ export function JobAnalysisPage({ onNavigate }: JobAnalysisPageProps) {
                   inputMode === 'pdf' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-fg-muted)]'
                 }`}
               >
-                Arquivo PDF
+                Arquivo PDF / DOCX
               </button>
             </div>
           </div>
@@ -171,17 +224,32 @@ export function JobAnalysisPage({ onNavigate }: JobAnalysisPageProps) {
             <div className="border-2 border-dashed border-[var(--color-border-strong)] rounded-xl p-8 text-center space-y-3 bg-[var(--color-surface-2)]/50">
               <Upload className="h-8 w-8 mx-auto text-[var(--color-accent)]" />
               <div>
-                <p className="text-sm font-semibold text-[var(--color-fg)]">Faça upload da descrição da vaga em PDF</p>
-                <p className="text-xs text-[var(--color-fg-muted)]">O texto será extraído e processado com segurança</p>
+                <p className="text-sm font-semibold text-[var(--color-fg)]">Faça upload da descrição da vaga em PDF ou DOCX</p>
+                <p className="text-xs text-[var(--color-fg-muted)]">O texto será extraído pelo servidor e carregado para análise</p>
               </div>
               <input
                 type="file"
                 accept=".pdf,.docx"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    setJobText(`Vaga importada de arquivo: ${file.name}\nDesenvolvedor Web com foco em React e SQL.`);
-                    setInputMode('text');
+                  if (!file) return;
+                  setIsAnalyzing(true);
+                  setErrorMsg(null);
+                  try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await apiRequest<{ success: boolean; fileName: string; extractedText: string }>('/resumes/upload', {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    if (res.extractedText) {
+                      setJobText(res.extractedText);
+                      setInputMode('text');
+                    }
+                  } catch (err: any) {
+                    setErrorMsg(err.message || 'Erro ao extrair texto do arquivo.');
+                  } finally {
+                    setIsAnalyzing(false);
                   }
                 }}
                 className="text-xs text-[var(--color-fg-muted)] file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-accent)] file:text-white cursor-pointer"
@@ -199,6 +267,56 @@ export function JobAnalysisPage({ onNavigate }: JobAnalysisPageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Histórico de Análises Salvas */}
+      {savedJobs.length > 0 && (
+        <Card className="bg-[var(--color-surface)] border-[var(--color-border)] p-4">
+          <CardHeader className="p-0 pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[var(--color-accent)]" />
+                Histórico de Vagas Analisadas ({savedJobs.length})
+              </CardTitle>
+              {isLoadingSaved && <span className="text-xs text-[var(--color-fg-muted)]">Atualizando...</span>}
+            </div>
+          </CardHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {savedJobs.map((job) => {
+              const score = job.job_analyses?.[0]?.compatibility_score;
+              const isCurrent = currentJob?.id === job.id;
+              return (
+                <div
+                  key={job.id}
+                  onClick={() => handleSelectSavedJob(job)}
+                  className={`p-3 rounded-lg border text-left cursor-pointer pressable transition-all flex flex-col justify-between ${
+                    isCurrent
+                      ? 'bg-[var(--color-surface-2)] border-[var(--color-accent)] shadow-sm'
+                      : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)]'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-xs text-[var(--color-fg)] truncate max-w-[180px]">
+                        {job.title}
+                      </span>
+                      {score !== undefined && (
+                        <Badge variant={score >= 70 ? 'success' : score >= 50 ? 'warning' : 'danger'}>
+                          {score}%
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[var(--color-fg-muted)] truncate">{job.company}</p>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-[var(--color-fg-subtle)] border-t border-[var(--color-border)] pt-2">
+                    <span>{new Date(job.created_at).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-[var(--color-accent)] font-medium">Reabrir →</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Resultado da Análise & Diagnóstico */}
       {currentJob?.analysis && (

@@ -15,19 +15,54 @@ import { ProfilePage } from '@/pages/ProfilePage';
 import { Toaster, toast } from 'sonner';
 
 export function App() {
-  const { isAuthenticated } = useAuthStore();
-  const [currentTab, setCurrentTab] = React.useState<string>(isAuthenticated ? 'dashboard' : 'landing');
+  const { isAuthenticated, isLoading, initAuth } = useAuthStore();
+  const [currentTab, setCurrentTab] = React.useState<string>('landing');
+
+  React.useEffect(() => {
+    initAuth();
+  }, [initAuth]);
 
   // Mantém estado de tab sincronizado quando faz login ou logout
   React.useEffect(() => {
-    if (!isAuthenticated && currentTab !== 'auth' && currentTab !== 'landing') {
-      setCurrentTab('landing');
+    if (!isLoading) {
+      if (isAuthenticated) {
+        if (currentTab === 'landing' || currentTab === 'auth') {
+          setCurrentTab('dashboard');
+        }
+      } else {
+        if (currentTab !== 'auth' && currentTab !== 'landing') {
+          setCurrentTab('landing');
+        }
+      }
     }
-  }, [isAuthenticated, currentTab]);
+  }, [isAuthenticated, isLoading, currentTab]);
+
+  const navigateTo = (tab: string) => {
+    const protectedTabs = ['dashboard', 'job-analysis', 'resumes', 'learning', 'tutor', 'assessment', 'portfolio', 'applications', 'profile'];
+    if (protectedTabs.includes(tab) && !isAuthenticated) {
+      toast.info('Faça login para acessar esta funcionalidade.');
+      setCurrentTab('auth');
+      return;
+    }
+    setCurrentTab(tab);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-[var(--color-accent)] border-t-transparent spin" />
+          <p className="text-xs text-[var(--color-fg-muted)] tracking-wider uppercase font-semibold">
+            Iniciando DevCareer AI...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)] flex flex-col font-sans selection:bg-[var(--color-accent)]/30">
-      {/* Toast Notifier do Sonner (padrão Emil Kowalski) */}
+      {/* Toast Notifier do Sonner */}
       <Toaster
         position="top-right"
         toastOptions={{
@@ -40,12 +75,12 @@ export function App() {
       />
 
       {/* Navbar Superior */}
-      <Navbar currentTab={currentTab} onTabChange={setCurrentTab} />
+      <Navbar currentTab={currentTab} onTabChange={navigateTo} />
 
       {/* Roteamento de Telas */}
       <main className="flex-1 pb-16">
         {currentTab === 'landing' && (
-          <LandingPage onStart={() => setCurrentTab(isAuthenticated ? 'dashboard' : 'auth')} />
+          <LandingPage onStart={() => navigateTo(isAuthenticated ? 'dashboard' : 'auth')} />
         )}
 
         {currentTab === 'auth' && (

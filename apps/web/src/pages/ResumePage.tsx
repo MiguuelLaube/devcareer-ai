@@ -18,6 +18,8 @@ import {
   AlertCircle,
   Copy,
   Github,
+  Upload,
+  Save,
 } from 'lucide-react';
 import type { ResumeContent, ResumeTemplate, AdaptationMode, ResumeEditOp } from '@devcareer/shared';
 import { applyEditOps, applyIdentity, RESUME_TEMPLATE_DEV_INICIANTE } from '@devcareer/shared';
@@ -117,6 +119,72 @@ export function ResumePage({ onNavigate }: ResumePageProps) {
     }
   };
 
+  const [isUploadingDoc, setIsUploadingDoc] = React.useState(false);
+  const [uploadNote, setUploadNote] = React.useState<string | null>(null);
+  const [isSavingRemote, setIsSavingRemote] = React.useState(false);
+  const [saveNote, setSaveNote] = React.useState<string | null>(null);
+
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDoc(true);
+    setUploadNote(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest<{
+        success: boolean;
+        fileName: string;
+        extractedText: string;
+        storagePath?: string;
+      }>('/resumes/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.extractedText) {
+        const cleanSummary = res.extractedText
+          .slice(0, 600)
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const nextContent: ResumeContent = {
+          ...content,
+          summary: cleanSummary || content.summary,
+        };
+        commit(nextContent, ['summary']);
+        setUploadNote(`Arquivo "${res.fileName}" processado e armazenado! Resumo atualizado.`);
+      }
+    } catch (err: any) {
+      setUploadNote(err.message || 'Erro ao processar arquivo.');
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const handleSaveToDatabase = async () => {
+    setIsSavingRemote(true);
+    setSaveNote(null);
+    try {
+      const res = await apiRequest<{ success: boolean; resume: any; version: any }>('/resumes', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: currentResume?.title || 'Currículo Profissional',
+          content,
+          targetRole: content.headline || 'Desenvolvedor',
+        }),
+      });
+      if (res.success) {
+        setSaveNote('Currículo e versão salvos com sucesso no Supabase!');
+      }
+    } catch (err: any) {
+      setSaveNote(err.message || 'Erro ao salvar no banco de dados.');
+    } finally {
+      setIsSavingRemote(false);
+    }
+  };
+
   const handleAdaptWithAI = async (mode: AdaptationMode) => {
     setIsAdapting(true);
     setSelectedMode(mode);
@@ -165,7 +233,11 @@ export function ResumePage({ onNavigate }: ResumePageProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={handleSaveToDatabase} isLoading={isSavingRemote} className="gap-2">
+            <Save className="h-4 w-4" />
+            Salvar no Banco
+          </Button>
           <Button variant="secondary" onClick={handlePrintPDF} className="gap-2">
             <Download className="h-4 w-4" />
             Exportar PDF Profissional
@@ -250,6 +322,31 @@ export function ResumePage({ onNavigate }: ResumePageProps) {
             </CardHeader>
             <CardContent>
               <IdentityForm />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Upload className="h-4 w-4 text-[var(--color-accent)]" />
+                Importar Currículo (PDF / DOCX)
+              </CardTitle>
+              <CardDescription>
+                Faça upload do seu currículo em PDF ou DOCX. O texto é extraído pelo servidor e salvo no Supabase Storage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <input
+                id="resume-file-input"
+                type="file"
+                accept=".pdf,.docx"
+                disabled={isUploadingDoc}
+                onChange={handleUploadFile}
+                className="text-xs text-[var(--color-fg-muted)] file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-accent)] file:text-white cursor-pointer w-full"
+              />
+              {isUploadingDoc && <p className="text-xs text-[var(--color-accent)] animate-pulse">Lendo arquivo e extraindo conteúdo...</p>}
+              {uploadNote && <p className="text-xs text-[var(--color-fg-muted)]">{uploadNote}</p>}
+              {saveNote && <p className="text-xs text-[var(--color-success)]">{saveNote}</p>}
             </CardContent>
           </Card>
 

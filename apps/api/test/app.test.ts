@@ -12,10 +12,28 @@ describe('api', () => {
     expect(Object.values(res.body.integrations).every((v) => typeof v === 'boolean')).toBe(true);
   });
 
-  it('rejects protected routes without a token', async () => {
+  it('rejects protected account routes without a token', async () => {
     const res = await request(app).get('/api/account/export');
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('unauthorized');
+  });
+
+  it('rejects protected jobs routes without a token', async () => {
+    const res = await request(app).get('/api/jobs');
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('unauthorized');
+
+    const analyzeRes = await request(app).post('/api/jobs/analyze').send({ text: 'Vaga de React' });
+    expect(analyzeRes.status).toBe(401);
+  });
+
+  it('rejects protected resumes routes without a token', async () => {
+    const res = await request(app).get('/api/resumes');
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('unauthorized');
+
+    const uploadRes = await request(app).post('/api/resumes/upload');
+    expect(uploadRes.status).toBe(401);
   });
 
   it('returns JSON 404 for unknown api routes', async () => {
